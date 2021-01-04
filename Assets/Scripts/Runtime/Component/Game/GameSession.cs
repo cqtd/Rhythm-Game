@@ -85,7 +85,7 @@ namespace Rhythm
 			if (Current.stopObjs.Count > 0)
 			{
 				next = Current.stopObjs.Peek;
-				if (next.Timing < _currentScrollTime + deltaTime)
+				if (next.timing < _currentScrollTime + deltaTime)
 				{
 					flag = true;
 					average = 0;
@@ -99,12 +99,12 @@ namespace Rhythm
 				{
 					next = bpm;
 				}
-				else if (bpm.Beat <= next.Beat)
+				else if (bpm.beat <= next.beat)
 				{
 					next = bpm;
 				}
 
-				if (next.Timing < _currentScrollTime + deltaTime)
+				if (next.timing < _currentScrollTime + deltaTime)
 				{
 					flag = true;
 					average = 0;
@@ -113,25 +113,25 @@ namespace Rhythm
 
 			double sub = 0;
 			double prevTime = _currentScrollTime;
-			while (next != null && next.Timing + _stopTime < _currentScrollTime + Time.fixedDeltaTime)
+			while (next != null && next.timing + _stopTime < _currentScrollTime + Time.fixedDeltaTime)
 			{
 				// bpm obj
 				if (next is BpmObject b)
 				{
-					double diff = b.Timing - prevTime;
+					double diff = b.timing - prevTime;
 					average += _currentBPM * diff;
 					_currentBPM = b.Bpm;
 
-					prevTime = b.Timing;
+					prevTime = b.timing;
 					Current.bpmObjs.RemoveLast();
 				}
 
 				// stop obj
 				if (next is StopObject stop)
 				{
-					double diff = stop.Timing - prevTime;
+					double diff = stop.timing - prevTime;
 					average += _currentBPM * diff;
-					prevTime = stop.Timing;
+					prevTime = stop.timing;
 
 					double duration = Current.stopDurations[stop.Key] / _currentBPM * 240;
 					_stopTime += duration;
@@ -160,7 +160,7 @@ namespace Rhythm
 					{
 						next = bpm;
 					}
-					else if (bpm.Beat <= next.Beat)
+					else if (bpm.beat <= next.beat)
 					{
 						next = bpm;
 					}
@@ -235,7 +235,6 @@ namespace Rhythm
 
 		private void Initialize()
 		{
-			Message.Execute(Event.OnFadeIn, 1.0f);
 
 #if UNITY_EDITOR
 			Game.Instance.option.autoPlay = EditorPrefs.GetBool("Rhythm.AutoPlay");
@@ -273,8 +272,8 @@ namespace Rhythm
 				int lineIdx = i == 9 ? 5 : i;
 
 				// 현재 시간에 해당하는 노트 피킹 
-				NoteObject n = Current.Lines[lineIdx].NoteList.Count > 0
-					? Current.Lines[lineIdx].NoteList.Peek
+				NoteObject n = Current.lanes[lineIdx].noteList.Count > 0
+					? Current.lanes[lineIdx].noteList.Peek
 					: null;
 
 				// 키가 눌러졌으면
@@ -292,7 +291,7 @@ namespace Rhythm
 						if (Judge.Evaluate(n, _currentTime) != Enum.JudgeType.IGNORE)
 						{
 							// 노트 프로세스
-							HandleNote(Current.Lines[lineIdx], lineIdx);
+							HandleNote(Current.lanes[lineIdx], lineIdx);
 						}
 					}
 				}
@@ -306,7 +305,7 @@ namespace Rhythm
 						m_sound.PlayKeySound(n.KeySound);
 
 						// 노트 프로세스
-						HandleNote(Current.Lines[lineIdx], lineIdx);
+						HandleNote(Current.lanes[lineIdx], lineIdx);
 					}
 
 					// m_keyPressed[lineIdx].DOFade(0f, m_duration * 0.4f);
@@ -319,8 +318,10 @@ namespace Rhythm
 
 		private IEnumerator PreLoad()
 		{
+			TimeCheck.Start();
+			
 			// Pattern 생성
-			m_parser.Parse();
+			yield return m_parser.Parse();
 
 			// 오디오 클립 준비
 			m_sound.AddAudioClips();
@@ -328,13 +329,15 @@ namespace Rhythm
 			// 노트 생성
 			m_drawer.Generate();
 
-			noteData.totalNote = Current.NoteCount;
+			noteData.totalNote = Current.noteCount;
 			_currentBPM = Current.bpmObjs.Peek.Bpm;
 			Current.bpmObjs.RemoveLast();
 
 			yield return new WaitUntil(() => m_sound.isPrepared);
 
 			// 준비 끝
+			
+			Message.Execute(Event.OnFadeIn, 1.0f);
 
 			Debug.Log("2초 후 게임 시작");
 			yield return Wait2Sec;
@@ -346,27 +349,27 @@ namespace Rhythm
 			StartCoroutine(WaitForGameFinishCoroutine());
 		}
 
-		private void HandleNote(Line l, int idx, float volume = 1.0f)
+		private void HandleNote(Lane l, int idx, float volume = 1.0f)
 		{
-			if (l.NoteList.Count <= 0)
+			if (l.noteList.Count <= 0)
 			{
 				return;
 			}
 
-			NoteObject n = l.NoteList.Peek;
+			NoteObject n = l.noteList.Peek;
 
 			// 노트 끄기
 			n.Model.SetActive(false);
-			l.NoteList.RemoveLast();
+			l.noteList.RemoveLast();
 
 			// 노트 판정
 			Enum.JudgeType judge = Judge.Evaluate(n, _currentTime);
 
 			// POOR 인 경우
-			if (l.NoteList.Count > 0 && l.NoteList.Peek.Extra == 1 && judge == Enum.JudgeType.POOR)
+			if (l.noteList.Count > 0 && l.noteList.Peek.Extra == 1 && judge == Enum.JudgeType.POOR)
 			{
-				l.NoteList.Peek.Model.SetActive(false);
-				l.NoteList.RemoveLast();
+				l.noteList.Peek.Model.SetActive(false);
+				l.noteList.RemoveLast();
 			}
 
 			// 무시하는 노트면
@@ -376,7 +379,7 @@ namespace Rhythm
 				judge = Enum.JudgeType.POOR;
 				// 비주얼 끄기
 				n.Model.SetActive(false);
-				l.NoteList.RemoveLast();
+				l.noteList.RemoveLast();
 			}
 
 			// BAD 판정 이상인 경우
@@ -388,7 +391,7 @@ namespace Rhythm
 
 			onHandleNote?.Invoke(judge);
 
-			int gap = (int) (n.Timing - _currentTime) * 1000;
+			int gap = (int) (n.timing - _currentTime) * 1000;
 			if (gap > 0)
 			{
 				scoreData.gapLate += gap;
@@ -402,7 +405,7 @@ namespace Rhythm
 
 			Message.Execute<long>(Event.OnScoreUpdate, scoreData.score);
 			Message.Execute<long>(Event.OnComboUpdate, scoreData.combo);
-			Message.Execute<float>(Event.OnExistGap, gap);
+			Message.Execute<int>(Event.OnExistGap, gap);
 			Message.Execute<Enum.JudgeType>(Event.OnJudgeUpdate, judge);
 
 			Message.Execute<float>(Event.OnFeverUpdate, feverData.gauge / 100f);
@@ -414,13 +417,13 @@ namespace Rhythm
 		{
 			scoreData.fever = fever;
 
-			Debug.Log($"Fever : {fever}");
+			// Debug.Log($"Fever : {fever}");
 		}
 
 		private void OnFeverFinished()
 		{
 			scoreData.fever = 1;
-			Debug.Log("Fever End");
+			// Debug.Log("Fever End");
 		}
 
 		private void LifeCheck()
@@ -433,7 +436,7 @@ namespace Rhythm
 
 		private void PlayNotes()
 		{
-			while (Current.noteObjs.Count > 0 && Current.noteObjs.Peek.Timing <= _currentTime)
+			while (Current.noteObjs.Count > 0 && Current.noteObjs.Peek.timing <= _currentTime)
 			{
 				int keySound = Current.noteObjs.Peek.KeySound;
 				m_sound.PlayKeySound(keySound);
@@ -442,45 +445,45 @@ namespace Rhythm
 
 			if (Game.Instance.option.autoPlay)
 			{
-				for (int i = 0; i < Current.Lines.Length; ++i)
+				for (int i = 0; i < Current.lanes.Length; ++i)
 				{
-					Line l = Current.Lines[i];
-					while (l.NoteList.Count > 0 && l.NoteList.Peek.Timing <= _currentTime)
+					Lane l = Current.lanes[i];
+					while (l.noteList.Count > 0 && l.noteList.Peek.timing <= _currentTime)
 					{
-						m_sound.PlayKeySound(l.NoteList.Peek.KeySound);
+						m_sound.PlayKeySound(l.noteList.Peek.KeySound);
 						HandleNote(l, i);
 
 						NoteKey noteKey = (NoteKey) i;
 						Message.Execute(Event.OnKeyDownAuto, noteKey);
 					}
 
-					while (l.LandMineList.Count > 0 &&
-					       Judge.Evaluate(l.LandMineList.Peek, _currentTime) == Enum.JudgeType.POOR)
+					while (l.mineList.Count > 0 &&
+					       Judge.Evaluate(l.mineList.Peek, _currentTime) == Enum.JudgeType.POOR)
 					{
-						NoteObject n = l.LandMineList.Peek;
+						NoteObject n = l.mineList.Peek;
 						n.Model.SetActive(false);
-						l.LandMineList.RemoveLast();
+						l.mineList.RemoveLast();
 					}
 				}
 			}
 			else
 			{
-				for (int i = 0; i < Current.Lines.Length; ++i)
+				for (int i = 0; i < Current.lanes.Length; ++i)
 				{
-					Line l = Current.Lines[i];
-					while (l.NoteList.Count > 0 && Judge.Evaluate(l.NoteList.Peek, _currentTime) == Enum.JudgeType.POOR)
+					Lane l = Current.lanes[i];
+					while (l.noteList.Count > 0 && Judge.Evaluate(l.noteList.Peek, _currentTime) == Enum.JudgeType.POOR)
 					{
-						NoteObject n = l.NoteList.Peek;
+						NoteObject n = l.noteList.Peek;
 						m_sound.PlayKeySound(n.KeySound, 0.3f);
 						HandleNote(l, i, 0.3f);
 					}
 
-					while (l.LandMineList.Count > 0 &&
-					       Judge.Evaluate(l.LandMineList.Peek, _currentTime) == Enum.JudgeType.POOR)
+					while (l.mineList.Count > 0 &&
+					       Judge.Evaluate(l.mineList.Peek, _currentTime) == Enum.JudgeType.POOR)
 					{
-						NoteObject n = l.LandMineList.Peek;
+						NoteObject n = l.mineList.Peek;
 						n.Model.SetActive(false);
-						l.LandMineList.RemoveLast();
+						l.mineList.RemoveLast();
 					}
 				}
 			}
@@ -490,7 +493,7 @@ namespace Rhythm
 		{
 			while (true)
 			{
-				bool allNoteProcessed = noteData.hitCount >= Current.NoteCount;
+				bool allNoteProcessed = noteData.hitCount >= Current.noteCount;
 				bool songDone = allNoteProcessed;
 
 				if (songDone || forceCompleteSong)

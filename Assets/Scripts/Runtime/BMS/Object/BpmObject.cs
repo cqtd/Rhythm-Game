@@ -7,7 +7,7 @@
 			Bpm = bpm;
 		}
 
-		public BpmObject(BpmObject bpm) : base(bpm.Bar, bpm.Beat)
+		public BpmObject(BpmObject bpm) : base(bpm.bar, bpm.beat)
 		{
 			Bpm = bpm.Bpm;
 		}

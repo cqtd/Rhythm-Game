@@ -2,52 +2,45 @@
 
 namespace Rhythm.BMS
 {
+	///<help>
+	/// http://cosmic.mearie.org/2005/03/bmsguide/
+	/// </help>
 	public sealed class Pattern
 	{
-		public Pattern()
-		{
-			BeatCTable = new Dictionary<int, double>();
-			stopDurations = new Dictionary<string, double>();
-			BGVideoTable = new Dictionary<string, string>();
-			
-			stopObjs = new ExtendedList<StopObject>
-			{
-				Capacity = 5
-			};
-			
-			bpmObjs = new ExtendedList<BpmObject>
-			{
-				Capacity = 5
-			};
-			
-			changeBgObjs = new ExtendedList<ChangeBGObject>
-			{
-				Capacity = 10
-			};
-			
-			noteObjs = new ExtendedList<NoteObject>();
-			
-			Lines = new Line[9];
-			
-			for (int i = 0; i < 9; ++i)
-			{
-				Lines[i] = new Line();
-			}
-		}
-
-		public int NoteCount  = 0;
-		public int BarCount  = 0;
+		public int noteCount = 0;
+		public int barCount = 0;
 
 		public readonly ExtendedList<ChangeBGObject> changeBgObjs;
 		public readonly ExtendedList<NoteObject> noteObjs;
 		public readonly ExtendedList<BpmObject> bpmObjs;
 		public readonly ExtendedList<StopObject> stopObjs;
-		
+
 		public readonly Dictionary<string, double> stopDurations;
-		public readonly Dictionary<int, double> BeatCTable;
-		public readonly Dictionary<string, string> BGVideoTable;
-		
-		public readonly Line[] Lines;
+		public readonly Dictionary<int, double> beatCTable;
+		public readonly Dictionary<string, string> bgVideoTable;
+		public readonly Dictionary<string, string> backgroundImage;
+
+		public readonly Lane[] lanes;
+
+		public Pattern()
+		{
+			beatCTable = new Dictionary<int, double>();
+			stopDurations = new Dictionary<string, double>();
+			bgVideoTable = new Dictionary<string, string>();
+			backgroundImage = new Dictionary<string, string>();
+
+			stopObjs = new ExtendedList<StopObject>();
+			bpmObjs = new ExtendedList<BpmObject>();
+			changeBgObjs = new ExtendedList<ChangeBGObject>();
+			noteObjs = new ExtendedList<NoteObject>();
+
+			lanes = new Lane[9];
+
+			for (int i = 0; i < 9; ++i)
+			{
+				lanes[i] = new Lane();
+			}
+		}
 
 		public void AddBGAChange(int bar, double beat, double beatLength, string key, bool isPic = false)
 		{
@@ -58,12 +51,12 @@ namespace Rhythm.BMS
 		{
 			if (extra == -1)
 			{
-				Lines[line].LandMineList.Add(new NoteObject(bar, keySound, beat, beatLength, extra));
+				lanes[line].mineList.Add(new NoteObject(bar, keySound, beat, beatLength, extra));
 			}
 			else
 			{
-				++NoteCount;
-				Lines[line].NoteList.Add(new NoteObject(bar, keySound, beat, beatLength, extra));
+				++noteCount;
+				lanes[line].noteList.Add(new NoteObject(bar, keySound, beat, beatLength, extra));
 			}
 		}
 
@@ -74,7 +67,7 @@ namespace Rhythm.BMS
 
 		public void AddNewBeatC(int bar, double beatC)
 		{
-			BeatCTable.Add(bar, beatC);
+			beatCTable.Add(bar, beatC);
 		}
 
 		public void AddBPM(int bar, double beat, double beatLength, double bpm)
@@ -94,60 +87,60 @@ namespace Rhythm.BMS
 
 		public double GetBeatC(int bar)
 		{
-			return BeatCTable.ContainsKey(bar) ? BeatCTable[bar] : 1.0;
+			return beatCTable.ContainsKey(bar) ? beatCTable[bar] : 1.0;
 		}
 
-		public void GetBeatsAndTimings()
+		public void GetBeatsAndTimings(double bpm)
 		{
 			foreach (BpmObject b in bpmObjs)
 			{
-				b.CalculateBeat(GetPreviousBarBeatSum(b.Bar), GetBeatC(b.Bar));
+				b.CalculateBeat(GetPreviousBarBeatSum(b.bar), GetBeatC(b.bar));
 			}
 
 			bpmObjs.Sort();
 
-			if (bpmObjs.Count == 0 || bpmObjs.Count > 0 && bpmObjs[bpmObjs.Count - 1].Beat != 0)
+			if (bpmObjs.Count == 0 || bpmObjs.Count > 0 && bpmObjs[bpmObjs.Count - 1].beat != 0)
 			{
-				// can be problem. static field에서 mono singleton 필드로 변경하였음
-				AddBPM(0, 0, 1, Game.Instance.header.bpm);
+				AddBPM(0, 0, 1, bpm);
 			}
 
-			bpmObjs[bpmObjs.Count - 1].Timing = 0;
+			bpmObjs[bpmObjs.Count - 1].timing = 0;
 			for (int i = bpmObjs.Count - 2; i > -1; --i)
 			{
-				bpmObjs[i].Timing = bpmObjs[i + 1].Timing + (bpmObjs[i].Beat - bpmObjs[i + 1].Beat) / (bpmObjs[i + 1].Bpm / 60);
+				bpmObjs[i].timing = bpmObjs[i + 1].timing +
+				                    (bpmObjs[i].beat - bpmObjs[i + 1].beat) / (bpmObjs[i + 1].Bpm / 60);
 			}
 
 			foreach (StopObject s in stopObjs)
 			{
-				s.CalculateBeat(GetPreviousBarBeatSum(s.Bar), GetBeatC(s.Bar));
-				s.Timing = GetTimingInSecond(s);
+				s.CalculateBeat(GetPreviousBarBeatSum(s.bar), GetBeatC(s.bar));
+				s.timing = GetTimingInSecond(s);
 			}
 
 			stopObjs.Sort();
 
 			foreach (ChangeBGObject c in changeBgObjs)
 			{
-				c.CalculateBeat(GetPreviousBarBeatSum(c.Bar), GetBeatC(c.Bar));
-				c.Timing = GetTimingInSecond(c);
+				c.CalculateBeat(GetPreviousBarBeatSum(c.bar), GetBeatC(c.bar));
+				c.timing = GetTimingInSecond(c);
 				int idx = stopObjs.Count - 1;
 				double sum = 0;
-				while (idx > 0 && c.Beat > stopObjs[--idx].Beat)
+				while (idx > 0 && c.beat > stopObjs[--idx].beat)
 				{
-					sum += stopDurations[stopObjs[idx].Key] / GetBPM(stopObjs[idx].Beat) * 240;
+					sum += stopDurations[stopObjs[idx].Key] / GetBpm(stopObjs[idx].beat) * 240;
 				}
 
-				c.Timing += sum;
+				c.timing += sum;
 			}
 
 			changeBgObjs.Sort();
 
 			CalCulateTimingsInListExtension(noteObjs);
 
-			foreach (Line l in Lines)
+			foreach (Lane l in lanes)
 			{
-				CalCulateTimingsInListExtension(l.NoteList);
-				CalCulateTimingsInListExtension(l.LandMineList);
+				CalCulateTimingsInListExtension(l.noteList);
+				CalCulateTimingsInListExtension(l.mineList);
 			}
 		}
 
@@ -155,22 +148,22 @@ namespace Rhythm.BMS
 		{
 			foreach (NoteObject n in list)
 			{
-				n.CalculateBeat(GetPreviousBarBeatSum(n.Bar), GetBeatC(n.Bar));
-				n.Timing = GetTimingInSecond(n);
+				n.CalculateBeat(GetPreviousBarBeatSum(n.bar), GetBeatC(n.bar));
+				n.timing = GetTimingInSecond(n);
 				int idx = stopObjs.Count;
 				double sum = 0;
-				while (idx > 0 && n.Beat > stopObjs[--idx].Beat)
+				while (idx > 0 && n.beat > stopObjs[--idx].beat)
 				{
-					sum += stopDurations[stopObjs[idx].Key] / GetBPM(stopObjs[idx].Beat) * 240;
+					sum += stopDurations[stopObjs[idx].Key] / GetBpm(stopObjs[idx].beat) * 240;
 				}
 
-				n.Timing += sum;
+				n.timing += sum;
 			}
 
 			list.Sort();
 		}
 
-		private double GetBPM(double beat)
+		private double GetBpm(double beat)
 		{
 			if (bpmObjs.Count == 1)
 			{
@@ -178,9 +171,9 @@ namespace Rhythm.BMS
 			}
 
 			int idx = bpmObjs.Count - 1;
-			while (idx > 0 && beat >= bpmObjs[--idx].Beat)
+			while (idx > 0 && beat >= bpmObjs[--idx].beat)
 			{
-				;
+				
 			}
 
 			return bpmObjs[idx + 1].Bpm;
@@ -190,12 +183,12 @@ namespace Rhythm.BMS
 		{
 			double timing = 0;
 			int i;
-			for (i = bpmObjs.Count - 1; i > 0 && obj.Beat > bpmObjs[i - 1].Beat; --i)
+			for (i = bpmObjs.Count - 1; i > 0 && obj.beat > bpmObjs[i - 1].beat; --i)
 			{
-				timing += (bpmObjs[i - 1].Beat - bpmObjs[i].Beat) / bpmObjs[i].Bpm * 60;
+				timing += (bpmObjs[i - 1].beat - bpmObjs[i].beat) / bpmObjs[i].Bpm * 60;
 			}
 
-			timing += (obj.Beat - bpmObjs[i].Beat) / bpmObjs[i].Bpm * 60;
+			timing += (obj.beat - bpmObjs[i].beat) / bpmObjs[i].Bpm * 60;
 			return timing;
 		}
 

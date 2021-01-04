@@ -6,28 +6,28 @@ namespace Rhythm.BMS
 	{
 		public ObjectBase(int bar, double beat, double beatLength)
 		{
-			Bar = bar;
-			Beat = beat / beatLength * 4.0;
+			this.bar = bar;
+			this.beat = beat / beatLength * 4.0;
 		}
 
 		public ObjectBase(int bar, double beat)
 		{
-			Bar = bar;
-			Beat = beat;
+			this.bar = bar;
+			this.beat = beat;
 		}
 
-		public int Bar { get; protected set; }
-		public double Beat { get; protected set; }
-		public double Timing { get; set; }
+		public int bar { get; protected set; }
+		public double beat { get; protected set; }
+		public double timing { get; set; }
 
 		public int CompareTo(ObjectBase other)
 		{
-			if (Beat < other.Beat)
+			if (beat < other.beat)
 			{
 				return 1;
 			}
 
-			if (Beat == other.Beat)
+			if (beat == other.beat)
 			{
 				return 0;
 			}
@@ -37,7 +37,7 @@ namespace Rhythm.BMS
 
 		public void CalculateBeat(double prevBeats, double beatC)
 		{
-			Beat = Beat * beatC + prevBeats;
+			beat = beat * beatC + prevBeats;
 		}
 	}
 }

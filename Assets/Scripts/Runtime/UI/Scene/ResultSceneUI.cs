@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using Rhythm.BMS;
 using TMPro;
 using UnityEngine;
@@ -9,10 +10,20 @@ namespace Rhythm.UI
 	public sealed class ResultSceneUI : MonoBehaviour
 	{
 		[SerializeField] private TextMeshProUGUI m_rank = default;
+		[SerializeField] private TextMeshProUGUI m_score = default;
+		[SerializeField] private TextMeshProUGUI m_songTitle = default;
+		[SerializeField] private TextMeshProUGUI m_artist = default;
 		[SerializeField] private RawImage m_artwork = default;
 		[SerializeField] private ResultBlockUI[] m_results = default;
+		
+		[SerializeField] private RectTransform m_starRoot = default;
 
-		public void Awake()
+		private void Awake()
+		{
+			
+		}
+
+		public void Start()
 		{
 			StartCoroutine(DisplayResult());
 		}
@@ -45,18 +56,53 @@ namespace Rhythm.UI
 			GameResult result = Game.Instance.GetLastResult();
 
 			// 노트 통계
-			m_results[0].Initialize("PERFECT", result.noteData.perfect.ToString("D4"));
-			m_results[1].Initialize("GREAT", result.noteData.great.ToString("D4"));
-			m_results[2].Initialize("GOOD", result.noteData.good.ToString("D4"));
-			m_results[3].Initialize("BAD", result.noteData.bad.ToString("D4"));
-			m_results[4].Initialize("POOR", result.noteData.poor.ToString("D4"));
-			m_results[5].Initialize("RATE", result.scoreData.accuracyAverage.ToString("P"));
-			m_results[6].Initialize("BEST COMBO", result.scoreData.bestCombo.ToString("D4"));
+			RefreshNote(result.noteData);
+			RefreshScore(result.scoreData);
+			RefreshStars(header);
+			
+			m_score.SetText($"{result.scoreData.score}");
+			m_songTitle.SetText(header.title);
+			m_artist.SetText(header.artist);
+		}
+		
+		private void RefreshStars(BeMusicHeader header)
+		{
+			int childCount = m_starRoot.childCount;
+			int level = header.playerLevel;
 
-			// 퍼센티지 계산
+			if (level >= childCount)
+			{
+				Debug.LogWarning($"별 개수보다 난이도가 높음! {level}");
+				level = childCount;
+			}
 
+			for (int i = level; i < childCount; i++)
+			{
+				m_starRoot.GetChild(i).gameObject.SetActive(false);
+			}
+
+			for (int i = 0; i < level; i++)
+			{
+				m_starRoot.GetChild(i).gameObject.SetActive(true);
+			}
+		}
+
+		private void RefreshNote(NoteData noteData)
+		{
+			m_results[0].Initialize("PERFECT", noteData.perfect.ToString("D4"));
+			m_results[1].Initialize("GREAT", noteData.great.ToString("D4"));
+			m_results[2].Initialize("GOOD", noteData.good.ToString("D4"));
+			m_results[3].Initialize("BAD", noteData.bad.ToString("D4"));
+			m_results[4].Initialize("POOR", noteData.poor.ToString("D4"));
+		}
+
+		private void RefreshScore(ScoreData scoreData)
+		{
+			m_results[5].Initialize("RATE", scoreData.accuracyAverage.ToString("P"));
+			m_results[6].Initialize("BEST COMBO", scoreData.bestCombo.ToString("D4"));
+			
 			// 랭크 계산
-			Enum.Rank rate = Judge.Rank(result.scoreData.accuracyAverage);
+			Enum.Rank rate = Judge.Rank(scoreData.accuracyAverage);
 			m_rank.SetText(rate.ToString());
 		}
 	}

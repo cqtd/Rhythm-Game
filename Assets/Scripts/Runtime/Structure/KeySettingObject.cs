@@ -85,7 +85,7 @@ namespace Rhythm
 		NOTE5 = 4,
 
 		SCRATCH1 = 5,
-		NONE = 6,
+		NONE = 6, // PEDAL
 
 		NOTE6 = 7,
 		NOTE7 = 8,

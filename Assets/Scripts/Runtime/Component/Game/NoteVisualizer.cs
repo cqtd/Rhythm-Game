@@ -96,9 +96,9 @@ namespace Rhythm
 			for (int i = 0; i < 9; ++i)
 			{
 				Vector3 prev = Vector2.zero;
-				for (int j = m_parser.pattern.Lines[i].NoteList.Count - 1; j >= 0; --j)
+				for (int j = m_parser.pattern.lanes[i].noteList.Count - 1; j >= 0; --j)
 				{
-					NoteObject n = m_parser.pattern.Lines[i].NoteList[j];
+					NoteObject n = m_parser.pattern.lanes[i].noteList[j];
 					GameObject note = Instantiate(m_notePrefab, m_noteParent);
 
 					if (i == 5)
@@ -117,7 +117,7 @@ namespace Rhythm
 					note.transform.position =
 						new Vector3(
 							xPoses[i],
-							(float) (n.Beat * Game.Instance.Setting.speed),
+							(float) (n.beat * Game.Instance.Setting.speed),
 							note.transform.position.z);
 
 					if (n.Extra == 1)
@@ -148,13 +148,13 @@ namespace Rhythm
 
 			for (int i = 0; i < 9; ++i)
 			{
-				for (int j = m_parser.pattern.Lines[i].LandMineList.Count - 1; j >= 0; --j)
+				for (int j = m_parser.pattern.lanes[i].mineList.Count - 1; j >= 0; --j)
 				{
-					NoteObject n = m_parser.pattern.Lines[i].LandMineList[j];
+					NoteObject n = m_parser.pattern.lanes[i].mineList[j];
 					GameObject note = Instantiate(m_notePrefab, m_noteParent);
 					note.GetComponent<SpriteRenderer>().sprite = landMine;
 					note.transform.localPosition =
-						new Vector2(xPoses[i], (float) (n.Beat * Game.Instance.Setting.speed));
+						new Vector2(xPoses[i], (float) (n.beat * Game.Instance.Setting.speed));
 					n.Model = note;
 				}
 			}

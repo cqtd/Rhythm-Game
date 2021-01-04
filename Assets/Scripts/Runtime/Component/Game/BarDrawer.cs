@@ -26,7 +26,7 @@ namespace Rhythm
 				return;
 			}
 
-			for (int i = _index; i < m_parser.pattern.BarCount; ++i)
+			for (int i = _index; i < m_parser.pattern.barCount; ++i)
 			{
 				float y = (float) (m_parser.pattern.GetPreviousBarBeatSum(i) * Game.Instance.Setting.speed
 				                   - m_gameManager.scrollValue);

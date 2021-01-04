@@ -6,7 +6,7 @@ namespace Rhythm
 	{
 		public static Enum.JudgeType Evaluate(NoteObject note, double currentTime)
 		{
-			double diff = Math.Abs(note.Timing - currentTime) * 1000;
+			double diff = Math.Abs(note.timing - currentTime) * 1000;
 
 			if (diff <= Constant.Delta.PERFECT)
 			{
@@ -28,7 +28,7 @@ namespace Rhythm
 				return Enum.JudgeType.BAD;
 			}
 
-			if (currentTime > note.Timing)
+			if (currentTime > note.timing)
 			{
 				return Enum.JudgeType.POOR;
 			}

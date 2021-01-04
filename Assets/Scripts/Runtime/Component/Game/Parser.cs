@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -7,42 +8,52 @@ using Random = System.Random;
 
 namespace Rhythm.BMS
 {
+	///<help>
+	/// http://cosmic.mearie.org/2005/03/bmsguide/
+	/// </help>
 	public class Parser : MonoBehaviour
 	{
 		[SerializeField] private Speaker m_sound = default;
 
-		[HideInInspector] public UnityStrginStringEvent onBackgroundImageParsed = new UnityStrginStringEvent();
 		private string[] _bmsTexts;
-		private Dictionary<string, double> _bpmContainer;
+		private Dictionary<string, double> bpms;
 
-		private BeMusicHeader _header;
-
+		private BeMusicHeader header;
 		public Pattern pattern;
+
+		private const int READ_ITERATION = 10;
 
 		private void Awake()
 		{
-			_bpmContainer = new Dictionary<string, double>();
+			bpms = new Dictionary<string, double>();
 		}
 
-		public void Parse()
+		public IEnumerator Parse()
 		{
 			pattern = new Pattern();
-
 			GetFileInternal();
-			ParseGameData();
-			ParseMainData();
+			
+			TimeCheck.Log("IO");
+			
+			yield return ParseGameData();
+			TimeCheck.Log("게임 데이터 파싱 코루틴");
+			
+			yield return ParseMainData();
+			TimeCheck.Log("메인 데이터 파싱 코루틴");
 
-			pattern.GetBeatsAndTimings();
+			pattern.GetBeatsAndTimings(header.bpm);
+			TimeCheck.Log("오브젝트");
 		}
 
 		private void GetFileInternal()
 		{
-			_header = Game.Instance.header;
+			header = Game.Instance.header;
 			_bmsTexts = File.ReadAllLines(Game.Instance.header.path);
 		}
 
-		private void ParseGameData()
+		private IEnumerator ParseGameData()
 		{
+			int i = 0;
 			foreach (string text in _bmsTexts)
 			{
 				if (text.Length <= 3)
@@ -75,15 +86,23 @@ namespace Rhythm.BMS
 				{
 					break;
 				}
+
+				if (i == READ_ITERATION)
+				{
+					yield return null;
+				}
+
+				i++;
 			}
 		}
 
-		private void ParseMainData()
+		private IEnumerator ParseMainData()
 		{
+			int iteration = 0;
+			
 			bool isInIfBrace = false;
 			bool isIfVaild = false;
-			double beatC = 1.0f;
-			int RandomValue = 1;
+			int random = 1;
 
 			int LNBits = 0;
 			Random rand = new Random();
@@ -97,14 +116,14 @@ namespace Rhythm.BMS
 
 				if (text.StartsWith("#random", StringComparison.OrdinalIgnoreCase))
 				{
-					RandomValue = rand.Next(1, int.Parse(text.Substring(8)) + 1);
+					random = rand.Next(1, int.Parse(text.Substring(8)) + 1);
 					continue;
 				}
 
 				if (text.StartsWith("#if", StringComparison.OrdinalIgnoreCase))
 				{
 					isInIfBrace = true;
-					if (text[4] - '0' == RandomValue)
+					if (text[4] - '0' == random)
 					{
 						isIfVaild = true;
 					}
@@ -129,139 +148,180 @@ namespace Rhythm.BMS
 					continue;
 				}
 
-				if (pattern.BarCount < bar)
+				if (pattern.barCount < bar)
 				{
-					pattern.BarCount = bar; //나중에 1 더해야함
+					pattern.barCount = bar; //나중에 1 더해야함
+				}
+				
+				if (iteration == READ_ITERATION)
+				{
+					yield return null;
 				}
 
-				if (text[4] == '1' || text[4] == '5')
-				{
-					int line, beatLength;
-					line = text[5] - '1';
-					beatLength = (text.Length - 7) / 2;
+				iteration++;
 
-					for (int i = 7; i < text.Length - 1; i += 2)
+				switch (text[4])
+				{
+					case '0':
 					{
-						int keySound = Decoder.Decode36(text.Substring(i, 2));
-						if (keySound != 0)
+						int beatLength;
+						switch (text[5])
 						{
-							if (text[4] == '5')
+							case '1':
 							{
-								if ((LNBits & (1 << line)) != 0)
+								beatLength = (text.Length - 7) / 2;
+								
+								for (int i = 7; i < text.Length - 1; i += 2)
 								{
-									pattern.AddNote(line, bar, (i - 7) / 2, beatLength, -1, 1);
-									LNBits &= ~(1 << line); //erase bit
-									continue;
+									int beat = (i - 7) / 2;
+									int keySound = Decoder.Decode36(text.Substring(i, 2));
+
+									if (keySound != 0)
+									{
+										pattern.AddBGSound(bar, beat, beatLength, keySound);
+									}
 								}
 
-								LNBits |= 1 << line; //write bit
+								break;
 							}
+							case '2':
+							{
+								double beatC = double.Parse(text.Substring(7));
+								pattern.AddNewBeatC(bar, beatC);
+								break;
+							}
+							case '3':
+							{
+								beatLength = (text.Length - 7) / 2;
+								for (int i = 7; i < text.Length - 1; i += 2)
+								{
+									int beat = (i - 7) / 2;
+									double bpm = int.Parse(text.Substring(i, 2), NumberStyles.HexNumber);
 
-							if (_header.lnType.HasFlag(Enum.Lntype.LNOBJ) && keySound == _header.lnObj)
-							{
-								pattern.AddNote(line, bar, (i - 7) / 2, beatLength, keySound, 1);
+									if (bpm != 0)
+									{
+										pattern.AddBPM(bar, beat, beatLength, bpm);
+									}
+								}
+
+								break;
 							}
-							else
+							case '4':
 							{
-								pattern.AddNote(line, bar, (i - 7) / 2, beatLength, keySound, 0);
+								beatLength = (text.Length - 7) / 2;
+								for (int i = 7; i < text.Length - 1; i += 2)
+								{
+									int beat = (i - 7) / 2;
+									string key = text.Substring(i, 2);
+
+									if (String.CompareOrdinal(key, "00") != 0)
+									{
+										if (pattern.bgVideoTable.ContainsKey(key))
+										{
+											pattern.AddBGAChange(bar, beat, beatLength, key);
+										}
+										else
+										{
+											pattern.AddBGAChange(bar, beat, beatLength, key, true);
+										}
+									}
+								}
+
+								break;
+							}
+							case '8':
+							{
+								beatLength = (text.Length - 7) / 2;
+								
+								for (int i = 7; i < text.Length - 1; i += 2)
+								{
+									int beat = (i - 7) / 2;
+									string key = text.Substring(i, 2);
+									if (string.Compare(key, "00", StringComparison.Ordinal) != 0)
+									{
+										pattern.AddBPM(bar, beat, beatLength, bpms[key]);
+									}
+								}
+
+								break;
+							}
+							case '9':
+							{
+								beatLength = (text.Length - 7) / 2;
+								for (int i = 7; i < text.Length - 1; i += 2)
+								{
+									int beat = (i - 7) / 2;
+									string sub = text.Substring(i, 2);
+									if (string.CompareOrdinal(sub, "00") != 0)
+									{
+										pattern.AddStop(bar, beat, beatLength, sub);
+									}
+								}
+
+								break;
 							}
 						}
+
+						break;
 					}
-				}
-				else if (text[4] == '0')
-				{
-					int beatLength;
-					if (text[5] == '1')
+					case '1':
+					case '5':
 					{
+						int line, beatLength;
+						line = text[5] - '1';
 						beatLength = (text.Length - 7) / 2;
-						//bar = int.Parse(s.Substring(1, 3));
+
 						for (int i = 7; i < text.Length - 1; i += 2)
 						{
+							int beat = (i - 7) / 2;
+							
 							int keySound = Decoder.Decode36(text.Substring(i, 2));
-
 							if (keySound != 0)
 							{
-								pattern.AddBGSound(bar, (i - 7) / 2, beatLength, keySound);
-							}
-						}
-					}
-					else if (text[5] == '2')
-					{
-						beatC = double.Parse(text.Substring(7));
-						pattern.AddNewBeatC(bar, beatC);
-					}
-					else if (text[5] == '3')
-					{
-						beatLength = (text.Length - 7) / 2;
-						for (int i = 7; i < text.Length - 1; i += 2)
-						{
-							double bpm = int.Parse(text.Substring(i, 2), NumberStyles.HexNumber);
-
-							if (bpm != 0)
-							{
-								pattern.AddBPM(bar, (i - 7) / 2, beatLength, bpm);
-							}
-						}
-					}
-					else if (text[5] == '4')
-					{
-						beatLength = (text.Length - 7) / 2;
-						for (int i = 7; i < text.Length - 1; i += 2)
-						{
-							string key = text.Substring(i, 2);
-
-							if (string.Compare(key, "00") != 0)
-							{
-								if (pattern.BGVideoTable.ContainsKey(key))
+								if (text[4] == '5')
 								{
-									pattern.AddBGAChange(bar, (i - 7) / 2, beatLength, key);
+									if ((LNBits & (1 << line)) != 0)
+									{
+										pattern.AddNote(line, bar, beat, beatLength, -1, 1);
+										LNBits &= ~(1 << line); //erase bit
+										continue;
+									}
+
+									LNBits |= 1 << line; //write bit
+								}
+
+								if (header.lnType.HasFlag(Enum.Lntype.LNOBJ) && keySound == header.lnObj)
+								{
+									pattern.AddNote(line, bar, beat, beatLength, keySound, 1);
 								}
 								else
 								{
-									pattern.AddBGAChange(bar, (i - 7) / 2, beatLength, key, true);
+									pattern.AddNote(line, bar, beat, beatLength, keySound, 0);
 								}
 							}
 						}
-					}
-					else if (text[5] == '8')
-					{
-						beatLength = (text.Length - 7) / 2;
-						//int idx = Decode36(s.Substring(7, 2)) - 1;
-						for (int i = 7; i < text.Length - 1; i += 2)
-						{
-							string key = text.Substring(i, 2);
-							if (key.CompareTo("00") != 0)
-							{
-								pattern.AddBPM(bar, (i - 7) / 2, beatLength, _bpmContainer[key]);
-							}
-						}
-					}
-					else if (text[5] == '9')
-					{
-						beatLength = (text.Length - 7) / 2;
-						for (int i = 7; i < text.Length - 1; i += 2)
-						{
-							string sub = text.Substring(i, 2);
-							if (string.Compare(sub, "00") != 0)
-							{
-								pattern.AddStop(bar, (i - 7) / 2, beatLength, sub);
-							}
-						}
-					}
-				}
-				else if (text[4] == 'D' || text[4] == 'E')
-				{
-					int line, beatLength;
-					line = text[5] - '1';
-					beatLength = (text.Length - 7) / 2;
 
-					for (int i = 7; i < text.Length - 1; i += 2)
+						break;
+					}
+					case 'D':
+					case 'E':
 					{
-						int keySound = Decoder.Decode36(text.Substring(i, 2));
-						if (keySound != 0)
+						int line, beatLength;
+						line = text[5] - '1';
+						beatLength = (text.Length - 7) / 2;
+
+						for (int i = 7; i < text.Length - 1; i += 2)
 						{
-							pattern.AddNote(line, bar, (i - 7) / 2, beatLength, keySound, -1);
+							int beat = (i - 7) / 2;
+							
+							int keySound = Decoder.Decode36(text.Substring(i, 2));
+							if (keySound != 0)
+							{
+								pattern.AddNote(line, bar, beat, beatLength, keySound, -1);
+							}
 						}
+
+						break;
 					}
 				}
 			}
@@ -278,8 +338,8 @@ namespace Rhythm.BMS
 
 		private void HandleLnObj(string s)
 		{
-			_header.lnObj = Decoder.Decode36(s.Substring(7, 2));
-			_header.lnType |= Enum.Lntype.LNOBJ;
+			header.lnObj = Decoder.Decode36(s.Substring(7, 2));
+			header.lnType |= Enum.Lntype.LNOBJ;
 		}
 
 		private void HandleBMP(string s)
@@ -290,17 +350,15 @@ namespace Rhythm.BMS
 
 			if (string.Compare(extend, "mpg", StringComparison.OrdinalIgnoreCase) == 0)
 			{
-				pattern.BGVideoTable.Add(key, Path);
+				pattern.bgVideoTable.Add(key, Path);
 			}
 			else if (string.Compare(extend, "bmp", StringComparison.OrdinalIgnoreCase) == 0)
 			{
-				onBackgroundImageParsed?.Invoke(key, Path);
-				// GameUI.BGImageTable.Add(key, Path);
+				pattern.backgroundImage.Add(key, Path);
 			}
 			else if (string.Compare(extend, "png", StringComparison.OrdinalIgnoreCase) == 0)
 			{
-				onBackgroundImageParsed?.Invoke(key, Path);
-				// GameUI.BGImageTable.Add(key, Path);
+				pattern.backgroundImage.Add(key, Path);
 			}
 		}
 
@@ -308,15 +366,14 @@ namespace Rhythm.BMS
 		{
 			if (s[4] == ' ')
 			{
-				_header.bpm = double.Parse(s.Substring(5));
+				header.bpm = double.Parse(s.Substring(5));
 			}
 			else
 			{
 				string key = s.Substring(4, 2);
 				double bpm = double.Parse(s.Substring(7));
 
-				//Debug.Log(exBpms.Count + "/" + bpm);
-				_bpmContainer.Add(key, bpm);
+				bpms.Add(key, bpm);
 			}
 		}
 
@@ -326,7 +383,6 @@ namespace Rhythm.BMS
 			{
 				string sub = s.Substring(5, 2);
 				double stopDuration = int.Parse(s.Substring(8)) / 192.0;
-				//pat.LegacyStopDuratns.Add(stopDuration); // 나누기 192
 				if (!pattern.stopDurations.ContainsKey(sub))
 				{
 					pattern.stopDurations.Add(sub, stopDuration);

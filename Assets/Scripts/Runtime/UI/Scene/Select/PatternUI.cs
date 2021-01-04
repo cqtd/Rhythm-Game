@@ -172,7 +172,7 @@ namespace Rhythm.UI
 
 			if (level >= childCount)
 			{
-				Debug.LogError($"별 개수보다 난이도가 높음! {level}");
+				Debug.LogWarning($"별 개수보다 난이도가 높음! {level}");
 				level = childCount;
 			}
 
