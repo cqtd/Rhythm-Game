@@ -1,0 +1,19 @@
+{
+    "name": "Rhythm",
+    "rootNamespace": "Rhythm",
+    "references": [
+        "GUID:14c9aa3764147684d86692a9134d7d74",
+        "GUID:560b04d1a97f54a4e82edc0cbbb69285",
+        "GUID:1885a375db0a07044ad42a64a1e2bf84",
+        "GUID:bb9ae1f4507f89c498c43329d26450ef"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

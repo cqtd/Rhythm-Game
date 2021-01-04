@@ -1,0 +1,14 @@
+{
+    "name": "Rhythm.Firstpass",
+    "rootNamespace": "Rhythm.Firstpass",
+    "references": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
