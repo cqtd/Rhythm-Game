@@ -2,6 +2,9 @@
 {
 	public class Event
 	{
+		public const string OnSpeedDown = "OnSpeedDown";
+		public const string OnSpeedUp = "OnSpeedUp";
+		
 		public const string OnSongPointerDown = "OnSongClick";
 		public const string OnChangeSong = "OnChangeSong";
 

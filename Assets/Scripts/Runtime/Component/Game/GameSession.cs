@@ -30,6 +30,7 @@ namespace Rhythm
 		private WaitForSeconds Wait2Sec = default;
 
 		private Pattern Current => m_parser.pattern;
+		private event Action<Enum.JudgeType> onHandleNote;
 
 		// Use this for initialization
 		private void Start()
@@ -210,6 +211,9 @@ namespace Rhythm
 
 			Message.Register<int>(Event.OnFeverIncrease, OnFeverIncrease);
 			Message.Register(Event.OnFeverFinished, OnFeverFinished);
+			
+			Message.Register(Event.OnSpeedDown, OnSpeedDown);
+			Message.Register(Event.OnSpeedUp, OnSpeedUp);
 		}
 
 		private void OnDisable()
@@ -220,9 +224,21 @@ namespace Rhythm
 
 			Message.Unregister<int>(Event.OnFeverIncrease, OnFeverIncrease);
 			Message.Unregister(Event.OnFeverFinished, OnFeverFinished);
+			
+			Message.Unregister(Event.OnSpeedDown, OnSpeedDown);
+			Message.Unregister(Event.OnSpeedUp, OnSpeedUp);
+		}
+		
+		private void OnSpeedDown()
+		{
+			// Game.Instance.Setting.speed -= 0.5f;
 		}
 
-		private event Action<Enum.JudgeType> onHandleNote;
+		private void OnSpeedUp()
+		{
+			// Game.Instance.Setting.speed += 0.5f;
+		}
+
 
 #if UNITY_EDITOR
 		[MenuItem("Debug/Toggle Auto Play")]

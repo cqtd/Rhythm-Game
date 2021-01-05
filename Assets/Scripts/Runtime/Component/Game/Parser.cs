@@ -164,13 +164,11 @@ namespace Rhythm.BMS
 				{
 					case '0':
 					{
-						int beatLength;
+						int beatLength = (text.Length - 7) / 2;
 						switch (text[5])
 						{
 							case '1':
 							{
-								beatLength = (text.Length - 7) / 2;
-								
 								for (int i = 7; i < text.Length - 1; i += 2)
 								{
 									int beat = (i - 7) / 2;
@@ -188,11 +186,11 @@ namespace Rhythm.BMS
 							{
 								double beatC = double.Parse(text.Substring(7));
 								pattern.AddNewBeatC(bar, beatC);
+								
 								break;
 							}
 							case '3':
 							{
-								beatLength = (text.Length - 7) / 2;
 								for (int i = 7; i < text.Length - 1; i += 2)
 								{
 									int beat = (i - 7) / 2;
@@ -208,13 +206,12 @@ namespace Rhythm.BMS
 							}
 							case '4':
 							{
-								beatLength = (text.Length - 7) / 2;
 								for (int i = 7; i < text.Length - 1; i += 2)
 								{
 									int beat = (i - 7) / 2;
 									string key = text.Substring(i, 2);
 
-									if (String.CompareOrdinal(key, "00") != 0)
+									if (string.CompareOrdinal(key, "00") != 0)
 									{
 										if (pattern.bgVideoTable.ContainsKey(key))
 										{
@@ -231,8 +228,6 @@ namespace Rhythm.BMS
 							}
 							case '8':
 							{
-								beatLength = (text.Length - 7) / 2;
-								
 								for (int i = 7; i < text.Length - 1; i += 2)
 								{
 									int beat = (i - 7) / 2;
@@ -247,7 +242,6 @@ namespace Rhythm.BMS
 							}
 							case '9':
 							{
-								beatLength = (text.Length - 7) / 2;
 								for (int i = 7; i < text.Length - 1; i += 2)
 								{
 									int beat = (i - 7) / 2;
@@ -391,5 +385,16 @@ namespace Rhythm.BMS
 		}
 
 		#endregion
+		
+		
+	}
+
+	enum PatternObject
+	{
+		BGSound = 1,
+		NewBeatC = 2,
+		BPM = 3,
+		BGAChange = 4,
+		Stop = 9,
 	}
 }
