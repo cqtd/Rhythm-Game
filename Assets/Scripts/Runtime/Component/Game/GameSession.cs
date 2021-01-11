@@ -2,6 +2,7 @@
 using System.Collections;
 using Rhythm.BMS;
 using UnityEngine;
+using UnityEngine.InputSystem;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -270,7 +271,12 @@ namespace Rhythm
 		private void QuickExit()
 		{
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
+
+#if ENABLE_INPUT_SYSTEM
+			if (Keyboard.current.f10Key.wasPressedThisFrame)
+#else
 			if (Input.GetKeyDown(KeyCode.F10))
+#endif
 			{
 				forceCompleteSong = true;
 				Debug.Log("Force Complete this song.");
@@ -283,52 +289,103 @@ namespace Rhythm
 		/// </summary>
 		private void ProcessInputOnUpdate()
 		{
-			for (int i = 0; i < _keyBindings.Length; ++i)
+			// for (int i = 0; i < _keyBindings.Length; ++i)
+			// {
+			// 	int lineIdx = i == 9 ? 5 : i;
+			//
+			// 	// 키가 눌러졌으면
+			// 	if (Input.GetKeyDown(_keyBindings[i]))
+			// 	{
+			// 		NoteObject n = Current.lanes[lineIdx].noteList.Count > 0
+			// 			? Current.lanes[lineIdx].noteList.Peek
+			// 			: null;
+			// 		
+			// 		Message.Execute<NoteKey>(Event.OnKeyDown, (NoteKey) i);
+			//
+			// 		// 노트가 존재하고 Extra가 1이 아닐 때
+			// 		if (n != null && n.Extra != 1)
+			// 		{
+			// 			// 소리 재생
+			// 			m_sound.PlayKeySound(n.KeySound);
+			//
+			// 			// 판정
+			// 			if (Judge.Evaluate(n, _currentTime) != Enum.JudgeType.IGNORE)
+			// 			{
+			// 				// 노트 프로세스
+			// 				HandleNote(Current.lanes[lineIdx], lineIdx);
+			// 			}
+			// 		}
+			// 	}
+			//
+			// 	// 키를 뗐을 때 (롱노트)
+			// 	if (Input.GetKeyUp(_keyBindings[i]))
+			// 	{
+			// 		// 현재 시간에 해당하는 노트 피킹 
+			// 		NoteObject n = Current.lanes[lineIdx].noteList.Count > 0
+			// 			? Current.lanes[lineIdx].noteList.Peek
+			// 			: null;
+			// 		
+			// 		if (n != null && n.Extra == 1)
+			// 		{
+			// 			// 사운드 재생
+			// 			m_sound.PlayKeySound(n.KeySound);
+			//
+			// 			// 노트 프로세스
+			// 			HandleNote(Current.lanes[lineIdx], lineIdx);
+			// 		}
+			//
+			// 		// m_keyPressed[lineIdx].DOFade(0f, m_duration * 0.4f);
+			//
+			// 		Message.Execute<NoteKey>(Event.OnKeyUp, (NoteKey) i);
+			// 	}
+			// }
+		}
+
+		public void OnKeyDown(NoteKey key)
+		{
+			int lineIdx = (int) key == 9 ? 5 : (int) key;
+			NoteObject n = Current.lanes[lineIdx].noteList.Count > 0
+				? Current.lanes[lineIdx].noteList.Peek
+				: null;
+					
+			Message.Execute<NoteKey>(Event.OnKeyDown, key);
+
+			// 노트가 존재하고 Extra가 1이 아닐 때
+			if (n != null && n.Extra != 1)
 			{
-				int lineIdx = i == 9 ? 5 : i;
+				// 소리 재생
+				m_sound.PlayKeySound(n.KeySound);
 
-				// 현재 시간에 해당하는 노트 피킹 
-				NoteObject n = Current.lanes[lineIdx].noteList.Count > 0
-					? Current.lanes[lineIdx].noteList.Peek
-					: null;
-
-				// 키가 눌러졌으면
-				if (Input.GetKeyDown(_keyBindings[i]))
+				// 판정
+				if (Judge.Evaluate(n, _currentTime) != Enum.JudgeType.IGNORE)
 				{
-					Message.Execute<NoteKey>(Event.OnKeyDown, (NoteKey) i);
-
-					// 노트가 존재하고 Extra가 1이 아닐 때
-					if (n != null && n.Extra != 1)
-					{
-						// 소리 재생
-						m_sound.PlayKeySound(n.KeySound);
-
-						// 판정
-						if (Judge.Evaluate(n, _currentTime) != Enum.JudgeType.IGNORE)
-						{
-							// 노트 프로세스
-							HandleNote(Current.lanes[lineIdx], lineIdx);
-						}
-					}
-				}
-
-				// 키를 뗐을 때 (롱노트)
-				if (Input.GetKeyUp(_keyBindings[i]))
-				{
-					if (n != null && n.Extra == 1)
-					{
-						// 사운드 재생
-						m_sound.PlayKeySound(n.KeySound);
-
-						// 노트 프로세스
-						HandleNote(Current.lanes[lineIdx], lineIdx);
-					}
-
-					// m_keyPressed[lineIdx].DOFade(0f, m_duration * 0.4f);
-
-					Message.Execute<NoteKey>(Event.OnKeyUp, (NoteKey) i);
+					// 노트 프로세스
+					HandleNote(Current.lanes[lineIdx], lineIdx);
 				}
 			}
+		}
+
+		public void OnKeyUp(NoteKey key)
+		{
+			int lineIdx = (int) key == 9 ? 5 : (int) key;
+
+			// 현재 시간에 해당하는 노트 피킹 
+			NoteObject n = Current.lanes[lineIdx].noteList.Count > 0
+				? Current.lanes[lineIdx].noteList.Peek
+				: null;
+					
+			if (n != null && n.Extra == 1)
+			{
+				// 사운드 재생
+				m_sound.PlayKeySound(n.KeySound);
+
+				// 노트 프로세스
+				HandleNote(Current.lanes[lineIdx], lineIdx);
+			}
+
+			// m_keyPressed[lineIdx].DOFade(0f, m_duration * 0.4f);
+
+			Message.Execute<NoteKey>(Event.OnKeyUp, key);
 		}
 
 

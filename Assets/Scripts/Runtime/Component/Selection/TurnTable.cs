@@ -43,55 +43,58 @@ namespace Rhythm.BMS
 			Timing.CallDelayed(0.01f, () => { ChangeSong(0); });
 		}
 
-		private void Update()
+		public void OnNextSong()
 		{
 			if (canChangedSong)
 			{
-				if (Input.GetKeyDown(m_nextSong))
-				{
-					ChangeSong(1);
-				}
-
-				if (Input.GetKeyDown(m_prevSong))
-				{
-					ChangeSong(-1);
-				}
+				ChangeSong(1);
 			}
+		}
 
+		public void OnPrevSong()
+		{
+			if (canChangedSong)
+			{
+				ChangeSong(-1);
+			}
+		}
+
+		public void OnNextPattern()
+		{
 			if (canChangedPattern)
 			{
-				if (Input.GetKeyDown(m_nextPattern))
-				{
-					int headerCount = songList[selectedSongIndex].Headers.Count;
+				int headerCount = songList[selectedSongIndex].Headers.Count;
 
-					selectedPatternIndex += 1;
-					selectedPatternIndex += headerCount;
-					selectedPatternIndex %= headerCount;
+				selectedPatternIndex += 1;
+				selectedPatternIndex += headerCount;
+				selectedPatternIndex %= headerCount;
 
-					Message.Execute(Event.OnPatternChanged, selectedPatternIndex);
-				}
-
-				if (Input.GetKeyDown(m_prevPattern))
-				{
-					int headerCount = songList[selectedSongIndex].Headers.Count;
-
-					selectedPatternIndex -= 1;
-					selectedPatternIndex += headerCount;
-					selectedPatternIndex %= headerCount;
-
-					Message.Execute(Event.OnPatternChanged, selectedPatternIndex);
-				}
+				Message.Execute(Event.OnPatternChanged, selectedPatternIndex);
 			}
+		}
 
-			if (Input.GetKeyDown(m_option))
+		public void OnPrevPattern()
+		{
+			if (canChangedPattern)
 			{
-				Message.Execute(Event.OnToggleOption);
-			}
+				int headerCount = songList[selectedSongIndex].Headers.Count;
 
-			if (Input.GetKeyDown(m_start))
-			{
-				GameStart();
+				selectedPatternIndex -= 1;
+				selectedPatternIndex += headerCount;
+				selectedPatternIndex %= headerCount;
+
+				Message.Execute(Event.OnPatternChanged, selectedPatternIndex);
 			}
+		}
+
+		public void OnOption()
+		{
+			Message.Execute(Event.OnToggleOption);
+		}
+
+		public void OnDecide()
+		{
+			GameStart();
 		}
 
 		private void OnEnable()
